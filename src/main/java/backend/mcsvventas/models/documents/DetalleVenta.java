@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class DetalleVenta {
-    private Long productId;
+    private Integer productId;
     private Integer quantity;
     private Double unitPrice;
     private Double subTotal;

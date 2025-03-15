@@ -17,7 +17,7 @@ public class Venta {
 
     @Id
     private String id;
-    private Long clientId;
+    private Integer clientId;
     private LocalDateTime date;
     private Double total;
     private List<DetalleVenta> details;

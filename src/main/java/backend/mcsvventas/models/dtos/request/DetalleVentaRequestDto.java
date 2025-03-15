@@ -1,5 +1,5 @@
 package backend.mcsvventas.models.dtos.request;
 
-public record DetalleVentaRequestDto(Long productId,
+public record DetalleVentaRequestDto(Integer productId,
                                      Integer quantity) {
 }
