@@ -1,6 +1,5 @@
 package backend.mcsvventas.models.documents;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
