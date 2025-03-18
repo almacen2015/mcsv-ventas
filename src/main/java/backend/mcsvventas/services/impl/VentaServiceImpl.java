@@ -14,8 +14,10 @@ import backend.mcsvventas.services.VentaService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class VentaServiceImpl implements VentaService {
@@ -52,12 +54,14 @@ public class VentaServiceImpl implements VentaService {
     }
 
     private void validateClientId(Integer id) {
-        if (id == null || id >= 0) {
+        if (id == null || id <= 0) {
             throw new VentaException(VentaException.CLIENT_ID_INVALID);
         }
     }
 
     private void validateDetails(List<DetalleVenta> details) {
+        Set<Integer> productIds = new HashSet<>();
+
         if (details == null || details.isEmpty()) {
             throw new VentaException(VentaException.DETAILS_INVALID);
         }
@@ -66,6 +70,9 @@ public class VentaServiceImpl implements VentaService {
             validateQuantity(detail.getQuantity());
 
             ProductoDtoResponse product = productClient.getProduct(detail.getProductId());
+            if (!productIds.add(detail.getProductId())) {
+                throw new VentaException(VentaException.PRODUCT_REPEATED);
+            }
 
             validateProduct(product);
             validateQuantityGreaterThanStock(detail.getQuantity(), product.stock());
@@ -89,7 +96,7 @@ public class VentaServiceImpl implements VentaService {
     }
 
     private void validateQuantity(Integer quantity) {
-        if (quantity == null || quantity >= 0) {
+        if (quantity == null || quantity <= 0) {
             throw new VentaException(VentaException.QUANTITY_INVALID);
         }
     }

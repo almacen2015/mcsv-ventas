@@ -19,7 +19,8 @@ public class ExceptionAdvice {
             VentaException.QUANTITY_INVALID,
             VentaException.CLIENT_ID_INVALID,
             VentaException.DETAILS_INVALID,
-            VentaException.PRODUCT_NOT_FOUND
+            VentaException.PRODUCT_NOT_FOUND,
+            VentaException.PRODUCT_REPEATED
     );
 
     @ExceptionHandler(VentaException.class)
