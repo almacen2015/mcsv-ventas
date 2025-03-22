@@ -1,10 +1,11 @@
 package backend.mcsvventas.services.impl;
 
+import backend.mcsvventas.client.MovementClient;
 import backend.mcsvventas.client.ProductClient;
 import backend.mcsvventas.exceptions.VentaException;
 import backend.mcsvventas.models.documents.DetalleVenta;
 import backend.mcsvventas.models.documents.Venta;
-import backend.mcsvventas.models.dtos.request.DetalleVentaRequestDto;
+import backend.mcsvventas.models.dtos.request.MovimientoDtoRequest;
 import backend.mcsvventas.models.dtos.request.VentaRequestDto;
 import backend.mcsvventas.models.dtos.response.ProductoDtoResponse;
 import backend.mcsvventas.models.dtos.response.VentaResponseDto;
@@ -14,6 +15,7 @@ import backend.mcsvventas.services.VentaService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -24,10 +26,14 @@ public class VentaServiceImpl implements VentaService {
     private final VentaRepository repository;
     private final VentaMapper ventaMapper = VentaMapper.INSTANCE;
     private final ProductClient productClient;
+    private final MovementClient movementClient;
 
-    public VentaServiceImpl(VentaRepository repository, ProductClient productClient) {
+    private double total = 0.0;
+
+    public VentaServiceImpl(VentaRepository repository, ProductClient productClient, MovementClient movementClient) {
         this.repository = repository;
         this.productClient = productClient;
+        this.movementClient = movementClient;
     }
 
     @Override
@@ -37,9 +43,23 @@ public class VentaServiceImpl implements VentaService {
         Venta venta = ventaMapper.toEntity(requestDto);
         validateDetails(venta.getDetails());
 
+        venta.setDate(LocalDateTime.now());
+        venta.setTotal(total);
 
         VentaResponseDto response = ventaMapper.toDto(repository.save(venta));
+        addMovement(venta.getDetails());
+
         return response;
+    }
+
+    private void addMovement(List<DetalleVenta> details) {
+        final String TIPO_MOVIMIENTO = "SALIDA";
+
+        for (DetalleVenta detail : details) {
+            MovimientoDtoRequest movimiento = new MovimientoDtoRequest(detail.getProductId(), detail.getQuantity(), TIPO_MOVIMIENTO);
+
+            movementClient.createMovimientoDto(movimiento);
+        }
     }
 
     @Override
@@ -50,6 +70,7 @@ public class VentaServiceImpl implements VentaService {
     private Double calculateSubtotal(Double precio, Integer quantity) {
         double subTotal;
         subTotal = precio * quantity;
+        total = total + subTotal;
         return subTotal;
     }
 
@@ -66,7 +87,7 @@ public class VentaServiceImpl implements VentaService {
             throw new VentaException(VentaException.DETAILS_INVALID);
         }
 
-        details.forEach(detail -> {
+        for (DetalleVenta detail : details) {
             validateQuantity(detail.getQuantity());
 
             ProductoDtoResponse product = productClient.getProduct(detail.getProductId());
@@ -77,10 +98,9 @@ public class VentaServiceImpl implements VentaService {
             validateProduct(product);
             validateQuantityGreaterThanStock(detail.getQuantity(), product.stock());
 
-            detail.setUnitPrice(detail.getUnitPrice());
+            detail.setUnitPrice(product.precio());
             detail.setSubTotal(calculateSubtotal(product.precio(), detail.getQuantity()));
-        });
-
+        }
     }
 
     private void validateProduct(ProductoDtoResponse product) {
