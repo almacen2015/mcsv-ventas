@@ -1,5 +1,6 @@
 package backend.mcsvventas.services.impl;
 
+import backend.mcsvventas.client.ClientFeign;
 import backend.mcsvventas.client.MovementClient;
 import backend.mcsvventas.client.ProductClient;
 import backend.mcsvventas.exceptions.VentaException;
@@ -7,15 +8,18 @@ import backend.mcsvventas.models.documents.DetalleVenta;
 import backend.mcsvventas.models.documents.Venta;
 import backend.mcsvventas.models.dtos.request.MovimientoDtoRequest;
 import backend.mcsvventas.models.dtos.request.VentaRequestDto;
+import backend.mcsvventas.models.dtos.response.ClienteResponseDTO;
 import backend.mcsvventas.models.dtos.response.ProductoDtoResponse;
 import backend.mcsvventas.models.dtos.response.VentaResponseDto;
 import backend.mcsvventas.models.mapper.VentaMapper;
 import backend.mcsvventas.repositories.VentaRepository;
 import backend.mcsvventas.services.VentaService;
 import jakarta.transaction.Transactional;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -27,26 +31,33 @@ public class VentaServiceImpl implements VentaService {
     private final VentaMapper ventaMapper = VentaMapper.INSTANCE;
     private final ProductClient productClient;
     private final MovementClient movementClient;
+    private final ClientFeign clientFeign;
 
     private double total = 0.0;
 
-    public VentaServiceImpl(VentaRepository repository, ProductClient productClient, MovementClient movementClient) {
+    public VentaServiceImpl(VentaRepository repository, ProductClient productClient, MovementClient movementClient, ClientFeign clientFeign) {
         this.repository = repository;
         this.productClient = productClient;
         this.movementClient = movementClient;
+        this.clientFeign = clientFeign;
     }
 
     @Override
     @Transactional(rollbackOn = Exception.class)
     public VentaResponseDto add(VentaRequestDto requestDto) {
-        validateClientId(requestDto.clientId());
+        String fullName;
+        ClienteResponseDTO client = validateClientId(requestDto.clientId());
         Venta venta = ventaMapper.toEntity(requestDto);
         validateDetails(venta.getDetails());
 
         venta.setDate(LocalDateTime.now());
         venta.setTotal(total);
 
-        VentaResponseDto response = ventaMapper.toDto(repository.save(venta));
+        Venta ventaSaved = repository.save(venta);
+
+        fullName = client.nombre() + " " + client.apellido();
+
+        VentaResponseDto response = new VentaResponseDto(ventaSaved.getId(), fullName, venta.getDate().toString(), venta.getTotal(), venta.getDetails());
         addMovement(venta.getDetails());
 
         return response;
@@ -74,10 +85,13 @@ public class VentaServiceImpl implements VentaService {
         return subTotal;
     }
 
-    private void validateClientId(Integer id) {
+    private ClienteResponseDTO validateClientId(Integer id) {
         if (id == null || id <= 0) {
             throw new VentaException(VentaException.CLIENT_ID_INVALID);
         }
+
+        ClienteResponseDTO client = clientFeign.getClient(id.longValue());
+        return client;
     }
 
     private void validateDetails(List<DetalleVenta> details) {
