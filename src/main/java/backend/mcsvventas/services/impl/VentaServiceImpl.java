@@ -20,10 +20,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class VentaServiceImpl implements VentaService {
@@ -55,7 +53,7 @@ public class VentaServiceImpl implements VentaService {
 
         Venta ventaSaved = repository.save(venta);
 
-        fullName = client.nombre() + " " + client.apellido();
+        fullName = getFullNameClient(client.nombre(), client.apellido());
 
         VentaResponseDto response = new VentaResponseDto(ventaSaved.getId(), fullName, venta.getDate().toString(), venta.getTotal(), venta.getDetails());
         addMovement(venta.getDetails());
@@ -75,7 +73,19 @@ public class VentaServiceImpl implements VentaService {
 
     @Override
     public List<VentaResponseDto> getAll() {
-        return List.of();
+        List<Venta> ventas = repository.findAll();
+        List<VentaResponseDto> response = new ArrayList<>();
+        for (Venta venta : ventas) {
+            ClienteResponseDTO client = clientFeign.getClient(venta.getClientId().longValue());
+            String fullNameClient = getFullNameClient(client.nombre(), client.apellido());
+            VentaResponseDto ventaDto = new VentaResponseDto(venta.getId(), fullNameClient, venta.getDate().toString(), venta.getTotal(), venta.getDetails());
+            response.add(ventaDto);
+        }
+        return response;
+    }
+
+    private String getFullNameClient(String nombre, String apellido) {
+        return nombre + " " + apellido;
     }
 
     private Double calculateSubtotal(Double precio, Integer quantity) {

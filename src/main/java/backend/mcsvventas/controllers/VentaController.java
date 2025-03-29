@@ -3,12 +3,15 @@ package backend.mcsvventas.controllers;
 import backend.mcsvventas.models.dtos.request.VentaRequestDto;
 import backend.mcsvventas.models.dtos.response.VentaResponseDto;
 import backend.mcsvventas.services.VentaService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/ventas")
@@ -19,8 +22,26 @@ public class VentaController {
         this.service = service;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    @Operation(summary = "Registra venta", description = "Registra venta")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Registro exitoso"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "401", description = "Acceso no autorizado")
+    })
     @PostMapping
     public ResponseEntity<VentaResponseDto> createVenta(@RequestBody VentaRequestDto requestDto) {
         return new ResponseEntity<>(service.add(requestDto), HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    @Operation(summary = "Listar ventas", description = "Lista todas las ventas")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ventas listadas"),
+            @ApiResponse(responseCode = "401", description = "Acceso no autorizado")
+    })
+    @GetMapping
+    public ResponseEntity<List<VentaResponseDto>> list() {
+        return new ResponseEntity<>(service.getAll(), HttpStatus.OK);
     }
 }
