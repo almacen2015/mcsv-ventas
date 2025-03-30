@@ -10,7 +10,7 @@
     </parent>
     <groupId>backend</groupId>
     <artifactId>mcsv-ventas</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <name>mcsv-ventas</name>
     <description>mcsv-ventas</description>
     <url/>
