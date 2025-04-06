@@ -20,7 +20,11 @@ public class ExceptionAdvice {
             VentaException.CLIENT_ID_INVALID,
             VentaException.DETAILS_INVALID,
             VentaException.PRODUCT_NOT_FOUND,
-            VentaException.PRODUCT_REPEATED
+            VentaException.PRODUCT_REPEATED,
+            VentaException.PAGE_NUMBER_INVALID,
+            VentaException.SIZE_NUMBER_INVALID,
+            VentaException.SORT_NAME_INVALID,
+            VentaException.QUANTITY_GREATER_THAN_STOCK
     );
 
     @ExceptionHandler(VentaException.class)

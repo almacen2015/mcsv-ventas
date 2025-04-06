@@ -14,14 +14,13 @@ import backend.mcsvventas.models.dtos.response.VentaResponseDto;
 import backend.mcsvventas.models.mapper.VentaMapper;
 import backend.mcsvventas.repositories.VentaRepository;
 import backend.mcsvventas.services.VentaService;
+import backend.mcsvventas.util.Paginado;
 import jakarta.transaction.Transactional;
-import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class VentaServiceImpl implements VentaService {
@@ -38,6 +37,29 @@ public class VentaServiceImpl implements VentaService {
         this.productClient = productClient;
         this.movementClient = movementClient;
         this.clientFeign = clientFeign;
+    }
+
+    @Override
+    public Page<VentaResponseDto> getSalesByClient(Integer clientId, Paginado paginado) {
+        validatePaginado(paginado);
+        ClienteResponseDTO client = validateClientId(clientId);
+
+        Pageable pageable = constructPageable(paginado);
+
+        Page<Venta> ventas = repository.findByClientId(clientId, pageable);
+
+        List<VentaResponseDto> response = new ArrayList<>();
+        if (!ventas.isEmpty()) {
+            response = ventas.getContent().stream()
+                    .map(venta -> new VentaResponseDto(
+                            venta.getId(),
+                            getFullNameClient(client.nombre(), client.apellido()),
+                            venta.getDate().toString(),
+                            venta.getTotal(),
+                            venta.getDetails()
+                    )).toList();
+        }
+        return new PageImpl<>(response, pageable, ventas.getTotalElements());
     }
 
     @Override
@@ -102,6 +124,24 @@ public class VentaServiceImpl implements VentaService {
 
         ClienteResponseDTO client = clientFeign.getClient(id.longValue());
         return client;
+    }
+
+    private PageRequest constructPageable(Paginado paginado) {
+        return PageRequest.of(paginado.page() - 1, paginado.size(), Sort.by(paginado.orderBy()).descending());
+    }
+
+    private void validatePaginado(Paginado paginado) {
+        if (paginado.page() <= 0) {
+            throw new VentaException(VentaException.PAGE_NUMBER_INVALID);
+        }
+
+        if (paginado.size() <= 0) {
+            throw new VentaException(VentaException.SIZE_NUMBER_INVALID);
+        }
+
+        if (paginado.orderBy() == null || paginado.orderBy().isBlank()) {
+            throw new VentaException(VentaException.SORT_NAME_INVALID);
+        }
     }
 
     private void validateDetails(List<DetalleVenta> details) {
